@@ -262,24 +262,6 @@ void callback(char *topic, byte *payload, unsigned int length)
     Serial.println(value, DEC);
     setBrightness(value);
   }
-
-  // Handling incoming messages
-  /*
-    if ( s_topic == mqtt_dimlight_get_topic ) {
-
-      if (s_payload == "1") {
-
-        if (state != 1) {
-
-          // Turn ON function will set last known brightness
-
-          client.publish(mqtt_dimlightstatus_set_topic, "1");
-          state = 1;
-          blink();
-
-          setBrightness(current_brightness);
-
-
         }
 
       } else if (s_payload == "0") {
