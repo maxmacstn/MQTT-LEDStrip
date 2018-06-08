@@ -1,0 +1,23 @@
+1. create LED Strip accessories
+homebridge/to/set
+{
+    "name": "LED Strip",
+    "service_name": "led_strip",
+    "service": "Lightbulb",
+    "Brightness": "default"
+  }
+
+2. Update On/Off charasteristics -  Change boolean value
+homebridge/to/set
+{"name": "led_strip", "service_name": "led_strip", "characteristic": "On", "value": true}
+
+3. Update Brightness characteristic - change int value (0-100)
+homebridge/to/set
+{"name": "LED Strip", "service_name": "led_strip", "characteristic": "Brightness", "value": 50}
+
+4. Set additional accessories information
+homebridge/to/set/accessoryinformation
+{"name": "LED Strip", "manufacturer": "espressif", "model": "esp8266-12", "serialnumber": "4711", "firmwarerevision": "1.0"}
+
+5. Get all changes (From iOS Devices)
+homebridge/from/set
