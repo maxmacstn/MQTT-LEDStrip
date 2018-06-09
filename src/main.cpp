@@ -25,11 +25,12 @@ const int mqtt_port = 1883;                      //MQTT Server PORT, default is 
 const int pwmpin = D2;
 
 // MQTT Constants
-const char *mqtt_device_value_get_topic = "homebridge/from/set";
+const char *mqtt_device_value_from_set_topic = "homebridge/from/set";
+const char *mqtt_device_value_to_set_topic = "homebridge/to/set";
 const char *device_name = "LED Strip";
 
 // Global
-int current_brightness = 100; // LED STRIP OFF (100), LED STRIP ON (0) My dimmer module is driven LOW so 100% is 0, 0% is 100
+int current_brightness = 0; // LED STRIP OFF (100), LED STRIP ON (0) My dimmer module is driven LOW so 100% is 0, 0% is 100
 byte state = 1;
 bool previousOn = false;
 
@@ -59,6 +60,36 @@ void setup_ota()
   ArduinoOTA.begin();
 }
 
+void updateServerValue()
+{
+  String value;
+  String message;
+  char data[80];
+
+  if (ISINVERT)
+    value = String(100 - current_brightness);
+  else
+    value = String(current_brightness);
+
+  if (value = "0")
+  {
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : \"false\"}";
+    message.toCharArray(data, (message.length() + 1));
+    client.publish(mqtt_device_value_to_set_topic, data);
+  }
+  else
+  {
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : \"true\"}";
+    message.toCharArray(data, (message.length() + 1));
+    client.publish(mqtt_device_value_to_set_topic, data);
+
+    delay(250);
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"Brightness\", \"value\" : \"" + value + "\"}";
+    message.toCharArray(data, (message.length() + 1));
+    client.publish(mqtt_device_value_to_set_topic, data);
+  }
+}
+
 void reconnect()
 {
 
@@ -73,9 +104,9 @@ void reconnect()
 
     if (client.connect(clientId.c_str()))
     {
-
       // Once connected, resubscribe.
-      client.subscribe(mqtt_device_value_get_topic);
+      client.subscribe(mqtt_device_value_from_set_topic);
+     // updateServerValue();
     }
     else
     {
@@ -128,7 +159,8 @@ void setOn(bool isOn)
       previousOn = false;
     }
   }
-  if(ISINVERT){
+  if (ISINVERT)
+  {
     // Turn on : fade to previous brightness from off
     if (isOn && current_brightness != 100 && !previousOn)
     {
@@ -158,7 +190,7 @@ void setOn(bool isOn)
     if (isOn == false)
     {
 
-      for (int i = current_brightness; i <=  100; i++)
+      for (int i = current_brightness; i <= 100; i++)
       {
         Serial.println(i, DEC);
         analogWrite(pwmpin, i);
@@ -205,9 +237,9 @@ void blink()
 {
 
   //Blink on received MQTT message
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
   digitalWrite(LED_BUILTIN, LOW);
+  delay(20);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -262,40 +294,6 @@ void callback(char *topic, byte *payload, unsigned int length)
     Serial.println(value, DEC);
     setBrightness(value);
   }
-        }
-
-      } else if (s_payload == "0") {
-
-        if (state != 0) {
-
-          // Turn OFF function
-
-          client.publish(mqtt_dimlightstatus_set_topic, "0");
-          state = 0;
-          blink();
-
-          setBrightness(100);
-
-
-        }
-
-      }
-
-    } else if ( s_topic == mqtt_dimlightbrightness_get_topic ) {
-
-      int receivedBrightness = s_payload.toInt();
-
-      if (receivedBrightness <= 100) {
-
-        int brightness = 100-receivedBrightness;  // Invert brightness received to reflect that the module I have is driven LOW
-
-        setBrightness(brightness);
-        client.publish(mqtt_dimlightbrightnessstatus_set_topic,c_payload);
-
-      }
-
-    } 
-    */
 }
 
 void setup()
@@ -305,6 +303,8 @@ void setup()
   analogWriteRange(100);        //This should set PWM range not 1023 but 100 as is %
   analogWrite(pwmpin, 100);     //Turn OFF by default
   pinMode(LED_BUILTIN, OUTPUT); //Initialize the BUILTIN_LED pin as an output
+  if (ISINVERT)
+    current_brightness = 100;
   Serial.begin(115200);
   WiFiManager wifiManager;
   wifiManager.autoConnect(autoconf_ssid, autoconf_pwd);
@@ -312,9 +312,7 @@ void setup()
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off led as default
-  Serial.begin(115200);
-  Serial.print("Connected");
-  digitalWrite(LED_BUILTIN, HIGH);
+  // Serial.begin(115200);
 }
 
 void loop()
