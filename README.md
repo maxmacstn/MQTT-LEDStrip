@@ -1,1 +1,53 @@
-HomeBridge_MQTT_LEDStrip
+
+
+# HomeBridge-MQTT LED-Strip
+
+[![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
+
+A code for ESP8266 microcontroller to control LED Strip via [homebridge-mqtt plugin for homebridge](https://github.com/cflurin/homebridge-mqtt) which can contron LED Strip from iOS Devices.
+Implemented from https://github.com/ArnieX/esp8266_dimmer_mqtt
+
+# Hardware
+I duplicate DIY Dimmer module circuit from https://github.com/ArnieX/esp8266_dimmer_mqtt 
+It control 12V LED Strip using PWM Signal that generated from ESP8266 which can control brightness of the LED Strip
+Please visit original project link for schematic.
+Note : Controlling LED from this circuit is invert, 100% PWM Duty cycle is off, 0% duty cycle is full brightness.
+
+# Add accessories to Homebridge-mqtt plugin
+According to homebride-mqtt plugin, you can add accessories for LED-Strip to homebridge by sending message(payload) to topic below.
+
+ * topic
+```url
+homebridge/to/set
+```
+
+ * payload
+```json
+{
+    "name": "LED Strip",
+    "service_name": "led_strip",
+    "service": "Lightbulb",
+    "Brightness": "default"
+  }
+```
+
+# Usage
+ 1. Install homebridge-mqtt plugin to your homebridge instance and add accessories to it using topic and payload above.
+ 2. Feel free to edit source file to suits your requirements and don't forget to change your mqtt server ip to match yours (Mine is 192.168.1.120)
+ 3. Install dependencies
+  - WiFiManager
+  - PubSubClient
+  - ESP8266wifi
+ 4. Flash main.cpp to your microcontroller. You can use Aruino IDE or PlatformIO
+ 5. For the first time, you'll need to connect to your Wifi. First, ESP8266 will create wifi named "ESP8266 LED_Light", connect to it using password 12345678, you'll see login redirect to wifi config page(if not, enter 192.168.4.1 in browser), connect to your wifi.
+ 6. If everything works, your ESP8266 should followed the command from HomeBridge.
+
+
+### Tested on
+* NodeMCU
+* Wemos D1 Mini
+
+
+If you got any problem or suggestions, don't hesitate to contact me, enjoy!
+
+
