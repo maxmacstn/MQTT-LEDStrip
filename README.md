@@ -7,6 +7,9 @@
 A code for ESP8266 microcontroller to control LED Strip via [homebridge-mqtt plugin for homebridge](https://github.com/cflurin/homebridge-mqtt) which can contron LED Strip from iOS Devices.
 Implemented from https://github.com/ArnieX/esp8266_dimmer_mqtt
 
+![gif](images/videotogif_2018.06.09_21.57.40.gif?raw=true)
+https://www.youtube.com/watch?v=2EnSU2nZBkw
+
 # Hardware
 I duplicate DIY Dimmer module circuit from https://github.com/ArnieX/esp8266_dimmer_mqtt 
 It control 12V LED Strip using PWM Signal that generated from ESP8266 which can control brightness of the LED Strip
