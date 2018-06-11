@@ -11,18 +11,21 @@
 
 #define ISINVERT true
 #define FADESPEED 5
+#define pwmpin D2
+#define BTNPIN D3
 
 // //Function prototype
-// void setOn(bool);
-// void setBrightness(int);
-// void blink();
+void setOn(bool);
+void setBrightness(int);
+void updateServerValue();
+void blink();
 
 // Constants
 const char *autoconf_ssid = "ESP8266 LED_Light"; //AP name for WiFi setup AP which your ESP will open when not able to connect to other WiFi
 const char *autoconf_pwd = "12345678";           // AP password so noone else can connect to the ESP in case your router fails
 const char *mqtt_server = "192.168.1.120";       //MQTT Server IP, your home MQTT server eg Mosquitto on RPi, or some public MQTT
 const int mqtt_port = 1883;                      //MQTT Server PORT, default is 1883 but can be anything.
-const int pwmpin = D2;
+
 
 // MQTT Constants
 const char *mqtt_device_value_from_set_topic = "homebridge/from/set";
@@ -33,6 +36,7 @@ const char *device_name = "LED Strip";
 int current_brightness = 0; // LED STRIP OFF (100), LED STRIP ON (0) My dimmer module is driven LOW so 100% is 0, 0% is 100
 byte state = 1;
 bool previousOn = false;
+volatile bool isUpdating = true;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -60,34 +64,89 @@ void setup_ota()
   ArduinoOTA.begin();
 }
 
+void handleButtonPressed(){
+  while(digitalRead(BTNPIN) == LOW);
+  delay(250);
+  //Prevent program crash when the program is still updating data to server(occurs when pressed rapidly)
+  if (isUpdating)
+    return;
+  
+  isUpdating = true;
+  
+  int tempBrightness = current_brightness;
+  if (ISINVERT)
+    tempBrightness = 100 - tempBrightness;
+
+ 
+  if (tempBrightness == 100 && previousOn){
+    setOn(false);
+    updateServerValue();
+    isUpdating = false;
+    return;
+  }
+
+  if(!previousOn){
+    if (ISINVERT)
+      current_brightness = 100;
+    else
+      current_brightness = 0;
+    setBrightness(5);
+    previousOn = true;
+  }
+  else if (tempBrightness >= 50){
+    setBrightness(100);
+  }else if(tempBrightness >= 25){
+    setBrightness(50);
+  }else{
+    setBrightness(25);
+  }
+  updateServerValue();
+  isUpdating = false;
+
+}
+
 void updateServerValue()
 {
+
+//  isUpdating = true;
+
   String value;
   String message;
-  char data[80];
+  char data[100];
+  
+
+
+  //   message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : false}";
+  //   message.toCharArray(data, (message.length() + 1));
+  //   client.publish(mqtt_device_value_to_set_topic, data);
+
+  // return;
 
   if (ISINVERT)
     value = String(100 - current_brightness);
   else
     value = String(current_brightness);
 
-  if (value = "0")
+  Serial.println("init value " + value);
+
+  if (value == "0" || !previousOn)
   {
-    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : \"false\"}";
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : false}";
     message.toCharArray(data, (message.length() + 1));
     client.publish(mqtt_device_value_to_set_topic, data);
   }
   else
   {
-    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : \"true\"}";
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"On\", \"value\" : true}";
     message.toCharArray(data, (message.length() + 1));
     client.publish(mqtt_device_value_to_set_topic, data);
 
-    delay(250);
-    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"Brightness\", \"value\" : \"" + value + "\"}";
+    // delay(250);
+    message = "{\"name\" : \"LED Strip\", \"service_name\" : \"led_strip\", \"characteristic\" : \"Brightness\", \"value\" : " + value + "}";
     message.toCharArray(data, (message.length() + 1));
     client.publish(mqtt_device_value_to_set_topic, data);
   }
+  // isUpdating = false;
 }
 
 void reconnect()
@@ -106,7 +165,8 @@ void reconnect()
     {
       // Once connected, resubscribe.
       client.subscribe(mqtt_device_value_from_set_topic);
-     // updateServerValue();
+      updateServerValue();
+      isUpdating = false;
     }
     else
     {
@@ -119,6 +179,8 @@ void reconnect()
 
 void setOn(bool isOn)
 {
+
+  isUpdating = true;
   if (!ISINVERT)
   {
     // Turn on : fade to previous brightness from off
@@ -199,10 +261,15 @@ void setOn(bool isOn)
       previousOn = false;
     }
   }
+  isUpdating = false;
 }
 
 void setBrightness(int newbrightness)
 {
+
+  isUpdating = true;
+  if (ISINVERT)
+      newbrightness = 100 - newbrightness;
 
   // This function will animate brightness change from last known brightness to the new one
   // It takes already inverted value so 100 is OFF, 0 is full brightness
@@ -231,6 +298,8 @@ void setBrightness(int newbrightness)
   {
     analogWrite(pwmpin, newbrightness);
   }
+
+  isUpdating = false;
 }
 
 void blink()
@@ -243,7 +312,8 @@ void blink()
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
-{
+{ 
+  while(isUpdating);
 
   char c_payload[length];
   memcpy(c_payload, payload, length);
@@ -287,9 +357,6 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     int value = root["value"];
 
-    if (ISINVERT)
-      value = 100 - value;
-
     Serial.print("Brightness = ");
     Serial.println(value, DEC);
     setBrightness(value);
@@ -301,10 +368,11 @@ void setup()
 
   pinMode(pwmpin, OUTPUT);      //Setup pin for MOSFET
   analogWriteRange(100);        //This should set PWM range not 1023 but 100 as is %
-  analogWrite(pwmpin, 100);     //Turn OFF by default
   pinMode(LED_BUILTIN, OUTPUT); //Initialize the BUILTIN_LED pin as an output
   if (ISINVERT)
     current_brightness = 100;
+  analogWrite(pwmpin, current_brightness
+  );     //Turn OFF by default
   Serial.begin(115200);
   WiFiManager wifiManager;
   wifiManager.autoConnect(autoconf_ssid, autoconf_pwd);
@@ -312,7 +380,10 @@ void setup()
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off led as default
-  // Serial.begin(115200);
+  Serial.begin(115200);
+
+  pinMode(BTNPIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BTNPIN), handleButtonPressed, FALLING);
 }
 
 void loop()
