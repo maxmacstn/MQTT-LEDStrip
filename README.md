@@ -13,7 +13,7 @@ https://www.youtube.com/watch?v=2EnSU2nZBkw
 # Functions
  - Turn on/off
  - Brightness control 
- - Manual control with momentary push button. (Still have bugs, more info in known bugs section)
+ - Manual control with momentary push button.
 
 # Hardware
 I duplicate DIY Dimmer module circuit from https://github.com/ArnieX/esp8266_dimmer_mqtt but I added momentary push button and connected it to D3 and ground (No pull-up resistor needed because I uses built-in pull-up)
@@ -56,7 +56,7 @@ homebridge/to/set
 * Wemos D1 Mini
 
 # Known bugs
- - Manual light control with button from ESP8266 may consequence to stopped sync data with HomeBridge. It may caused by PubSubCilent stopped subscribe to MQTT topic. I tried to add delay and boolean to lock the critical section in the code while the process is still running to prevent it to take action without finished previous action but this bug still occurs.
+ - Manual light control won't work with LED fade effect because it takes sometime to finished and it blocked main loop, PubSubCilent will not subscribe to topic if main loop was blocked too long.
 
 
 If you got any problem or suggestions, don't hesitate to contact me, enjoy!

@@ -10,7 +10,6 @@
 #include <ArduinoJson.h>
 
 #define ISINVERT true
-#define FADESPEED 5
 #define pwmpin D2
 #define BTNPIN D3
 
@@ -25,6 +24,7 @@ const char *autoconf_ssid = "ESP8266 LED_Light"; //AP name for WiFi setup AP whi
 const char *autoconf_pwd = "12345678";           // AP password so noone else can connect to the ESP in case your router fails
 const char *mqtt_server = "192.168.1.120";       //MQTT Server IP, your home MQTT server eg Mosquitto on RPi, or some public MQTT
 const int mqtt_port = 1883;                      //MQTT Server PORT, default is 1883 but can be anything.
+int FADESPEED = 5;
 
 
 // MQTT Constants
@@ -65,12 +65,16 @@ void setup_ota()
 }
 
 void handleButtonPressed(){
+  
+
   while(digitalRead(BTNPIN) == LOW);
-  delay(250);
+  // delay(250);
   //Prevent program crash when the program is still updating data to server(occurs when pressed rapidly)
   if (isUpdating)
     return;
   
+  int temp_fadespeed = FADESPEED;
+  FADESPEED = 0;
   isUpdating = true;
   
   int tempBrightness = current_brightness;
@@ -78,30 +82,37 @@ void handleButtonPressed(){
     tempBrightness = 100 - tempBrightness;
 
  
-  if (tempBrightness == 100 && previousOn){
-    setOn(false);
-    updateServerValue();
-    isUpdating = false;
-    return;
-  }
+  // if (tempBrightness == 100 && previousOn){
+  //   setOn(false);
+  //   updateServerValue();
+  //   isUpdating = false;
+  //   FADESPEED = temp_fadespeed;
+  //   return;
+  // }
 
   if(!previousOn){
     if (ISINVERT)
       current_brightness = 100;
     else
       current_brightness = 0;
-    setBrightness(5);
+    setBrightness(100);
     previousOn = true;
   }
-  else if (tempBrightness >= 50){
-    setBrightness(100);
-  }else if(tempBrightness >= 25){
+
+  else if (tempBrightness <= 100 && tempBrightness > 50){
     setBrightness(50);
-  }else{
+  }else if(tempBrightness <= 50 && tempBrightness > 25){
     setBrightness(25);
+  }else if(tempBrightness <= 25 && tempBrightness > 5){
+    setBrightness(5);
+  }else{
+    setOn(false);
+    updateServerValue();
   }
   updateServerValue();
   isUpdating = false;
+  FADESPEED = temp_fadespeed;
+
 
 }
 
@@ -380,7 +391,7 @@ void setup()
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off led as default
-  Serial.begin(115200);
+  // Serial.begin(115200);
 
   pinMode(BTNPIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(BTNPIN), handleButtonPressed, FALLING);
