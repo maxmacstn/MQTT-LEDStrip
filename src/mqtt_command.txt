@@ -1,5 +1,5 @@
 1. create LED Strip accessories
-homebridge/to/set
+homebridge/to/add
 {
     "name": "LED Strip",
     "service_name": "led_strip",

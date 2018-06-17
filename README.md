@@ -15,6 +15,10 @@ https://www.youtube.com/watch?v=2EnSU2nZBkw
  - Brightness control 
  - Manual control with momentary push button.
 
+ # Prerequisites
+  - MQTT Broker (I use Mosquitto)
+  - Homebridge-mqtt plugin installed on homebridge
+
 # Hardware
 I duplicate DIY Dimmer module circuit from https://github.com/ArnieX/esp8266_dimmer_mqtt but I added momentary push button and connected it to D3 and ground (No pull-up resistor needed because I uses built-in pull-up)
 It control 12V LED Strip using PWM Signal that generated from ESP8266 which can control brightness of the LED Strip
@@ -26,7 +30,7 @@ According to homebride-mqtt plugin, you can add accessories for LED-Strip to hom
 
  * topic
 ```url
-homebridge/to/set
+homebridge/to/add
 ```
 
  * payload
